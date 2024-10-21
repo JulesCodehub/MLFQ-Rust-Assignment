@@ -28,16 +28,43 @@ impl MLFQ {
     // Exercise 1: Queue Management
     pub fn add_process(&mut self, process: Process) {
         // TODO: Implement this function
-        // Add the process to the appropriate queue based on its priority
-        // Ensure the priority is within the valid range (0 to num_levels - 1)
+
+        // this needs to be dynamic to num_levels
+        // maybe this should just be a if else?
+        match process.priorty {
+            0..=num_levels-1 => queues[process.priority].add(process);
+            _ => queues[0].add(process),
+        }
+
     }
 
     // Exercise 2: Process Execution
     pub fn execute_process(&mut self, queue_index: usize) {
         // TODO: Implement this function
-        // Execute the process for its time quantum or until completion
-        // Update remaining_time, total_executed_time, and current_time
-        // Move the process to a lower priority queue if it doesn't complete
+
+        let mut time_ran = 0;
+
+        // the process will run for remaining_time or time_quanta, whichever is shorter
+        // queue_index is given as a static value, this will be the ith process in the queue
+        // what to do if the queue_index is out of bounds?
+
+        if time_quanta >= remaining_time { // job finishes
+
+            time_ran = remaining_time;
+            remaining_time = 0;
+            total_executed_time += time_ran;
+
+        } else { // run and move to lower queue
+
+            time_ran = time_quanta
+            total_executed_time += time_ran;
+            remaining_time -= time_ran;
+
+            // move to lower queue
+        }
+
+        // global to the mlfq
+        current_time += time_ran;
     }
 
     // Exercise 3: Priority Boost
@@ -45,6 +72,21 @@ impl MLFQ {
         // TODO: Implement this function
         // Move all processes to the highest priority queue
         // Reset the priority of all processes to 0
+
+        for p in queues[0] {
+            p.priority = 0;
+        }
+
+        for i in 1..nums_levels {
+
+            while !queue[i].isempty() {
+
+                queue[i][0].priority = 0;
+                queue[0].add(queue[i][0].remove()));
+
+            }
+        }
+        // 
     }
 
     // Simulate time passing and trigger a boost if needed

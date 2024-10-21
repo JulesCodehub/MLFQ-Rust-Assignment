@@ -46,7 +46,9 @@ impl MLFQ {
 
         // the process will run for remaining_time or time_quanta, whichever is shorter
         // queue_index is given as a static value, this will be the ith process in the queue
-        // what to do if the queue_index is out of bounds?
+        // what to do if the queue_index is out of bounds? Ill assume process should exit since there isnt anything to do
+
+        // if the process is already finished or finishes, the process should be removed
 
         if time_quanta >= remaining_time { // job finishes
 

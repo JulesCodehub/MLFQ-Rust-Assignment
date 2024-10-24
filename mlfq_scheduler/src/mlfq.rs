@@ -37,10 +37,10 @@ impl MLFQ {
         let prio = process.priority;
         let n = self.num_levels;
 
-        if prio > 0 && prio <= n {
-            self.queues[prio-1].push(process);
+        if prio <= n {
+            self.queues[prio].push(process);
         } else {
-            self.queues[0].push(process); // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
+            self.queues[n-1].push(process); // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
         }
     }
 

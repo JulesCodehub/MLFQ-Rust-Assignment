@@ -128,7 +128,7 @@ impl MLFQ {
         let mut err = false;
 
         for i in 0..self.num_levels {
-            let len = nums[i].len();
+            let len = self.queues[i].len();
             let c = idx % len;
                 if c == idx {
                     idx = c;

@@ -27,68 +27,88 @@ impl MLFQ {
 
     // Exercise 1: Queue Management
     pub fn add_process(&mut self, process: Process) {
-        // TODO: Implement this function
-
-        // this needs to be dynamic to num_levels
-        // maybe this should just be a if else?
-        match process.priorty {
-            0..=num_levels-1 => queues[process.priority].add(process);
-            _ => queues[0].add(process),
+        
+        // 0. Edge case: determine if the process is already completed, if so automatically return and ignore everything else
+        if process.remaining_time == 0 {
+            return
         }
 
+        // 1. given the process, read its priority so we can see what queue it belongs in.
+        let prio = process.priority; //make sure this value is immutable
+
+        match prio {
+            1..=num_levels => queues[prio-1].add(process);
+            _ => queues[0].add(process); // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
+        }
     }
 
     // Exercise 2: Process Execution
     pub fn execute_process(&mut self, queue_index: usize) {
-        // TODO: Implement this function
 
-        let mut time_ran = 0;
+        // 1. given queue_index, determine which level and actual index in the queues this process falls in
+        let (level, idx) = find_index(self, queue_index);
 
-        // the process will run for remaining_time or time_quanta, whichever is shorter
-        // queue_index is given as a static value, this will be the ith process in the queue
-        // what to do if the queue_index is out of bounds? Ill assume process should exit since there isnt anything to do
-
-        // if the process is already finished or finishes, the process should be removed
-
-        if time_quanta >= remaining_time { // job finishes
-
-            time_ran = remaining_time;
-            remaining_time = 0;
-            total_executed_time += time_ran;
-
-        } else { // run and move to lower queue
-
-            time_ran = time_quanta
-            total_executed_time += time_ran;
-            remaining_time -= time_ran;
-
-            // move to lower queue
+        // 2. Edge case: if this index does not exist, we need to return as there is nothing to process
+        if level == -1 {
+            return
         }
 
-        // global to the mlfq
+        // 3. using this proper index lets copy the information to preform some math on it locally
+        let proc_time = queue[level][idx].remaining_time;
+        let t_q = time_quanta[level];
+
+        // 4. determine how long the process runs for
+        mut time_ran: i32;
+        mut job_left: i32;
+
+        if proc_time == 0 {
+            time_ran = 0;
+            job_left = 0;
+        } else {
+            if proc_time > t_q {
+                time_ran = t_q;
+            } else {
+                time_ran = proc_time;
+            }
+            // time_ran = min(proc_time, t_q);
+            job_left = proc_time - time_ran;
+        }
+
+        // 5. update the process information based on the math
+        queue[level][idx].remaining_time = job_left;
+        queue[level][idx].total_executed_time += time_ran;
+
+        // 6. if the process does not have anything left to run, eject it
+        if job_left == 0 {
+            queue[level][idx].remove();
+        }
+
+        // 7. if instead the process ran all of its time quanta, we need to move it to the next lower queue
+        // 8. Edge case: if the process is already in the lowest queue, we dont need to do anything
+        // We will use this as a condition to ignore execution for this whole block
+        if time_ran >= t_q && level < num_levels {
+            queue[level][idx].priority += 1;
+            queue[num_levels].add(queue[level][idx].remove());
+        }
+
+        // 9. update the global time
         current_time += time_ran;
     }
 
     // Exercise 3: Priority Boost
     pub fn priority_boost(&mut self) {
-        // TODO: Implement this function
-        // Move all processes to the highest priority queue
-        // Reset the priority of all processes to 0
 
+        // 1. Move any processes not in the 0th level to the 0th level in the most elegant way possible
+        for i in 1..nums_levels {
+            while !queue[i].isempty() {
+                queue[0].add(queue[i][0].remove()));
+            }
+        }
+
+        // 2. Assign every process to have 0 priority
         for p in queues[0] {
             p.priority = 0;
         }
-
-        for i in 1..nums_levels {
-
-            while !queue[i].isempty() {
-
-                queue[i][0].priority = 0;
-                queue[0].add(queue[i][0].remove()));
-
-            }
-        }
-        // 
     }
 
     // Simulate time passing and trigger a boost if needed

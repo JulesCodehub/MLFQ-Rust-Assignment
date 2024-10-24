@@ -37,10 +37,12 @@ impl MLFQ {
         let prio = process.priority;
         let n = self.num_levels;
 
-        if prio <= n {
+        // 2. Move it into the correct queue
+        // I wanted to use a match case, but the number of levels is not known at compile time, so if-else will have to do
+        if prio < n {
             self.queues[prio].push(process);
         } else {
-            self.queues[n-1].push(process); // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
+            self.queues[n-1].push(process); // 3. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
         }
     }
 
@@ -61,20 +63,21 @@ impl MLFQ {
         let time_ran: u32;
         let job_left: u32;
 
-        if proc_time == 0 {
+        if proc_time == 0 { // 5. Edge case: handle a scenario where the process does not need to run
             time_ran = 0;
             job_left = 0;
         } else {
+            // The process will execute for the time_quanta or its remaining_time, whichever is shorter
             if proc_time > t_q {
                 time_ran = t_q;
             } else {
                 time_ran = proc_time;
             }
-            // time_ran = min(proc_time, t_q);
+            // time_ran = min(proc_time, t_q); // I did not want to need to include the min crate but this would be a cleaner solution
             job_left = proc_time - time_ran;
         }
 
-        // 5. update the process information based on the math
+        // 5. update the process information based on the math done above
         self.queues[level][idx].remaining_time = job_left;
         self.queues[level][idx].total_executed_time += time_ran;
 
@@ -84,12 +87,10 @@ impl MLFQ {
         }
 
         // 7. if instead the process ran all of its time quanta, we need to move it to the next lower queue
-        // 8. Edge case: if the process is already in the lowest queue, we dont need to do anything
-        // We will use this as a condition to ignore execution for this whole block
-        if time_ran >= t_q && level < self.num_levels {
+        if t_q <= time_ran && level < self.num_levels { // 8. Edge case: if the process is already in the lowest queue, we dont need to do anything
             self.queues[level][idx].priority += 1;
             let tmp = self.queues[level].remove(idx);
-            self.queues[self.num_levels].push(tmp);
+            self.queues[level+1].push(tmp);
         }
 
         // 9. update the global time
@@ -99,9 +100,9 @@ impl MLFQ {
     // Exercise 3: Priority Boost
     pub fn priority_boost(&mut self) {
 
-        // 1. Move any processes not in the 0th level to the 0th level in the most elegant way possible
+        // 1. Move any processes not in the 0th level to the 0th level
         for i in 1..self.num_levels {
-            while !self.queues[i].is_empty() {
+            while !self.queues[i].is_empty() { // This iteration is not as clean but it works and I wasnt able to find a replacement yet
                 let tmp = self.queues[i].remove(0);
                 self.queues[0].push(tmp);
             }
@@ -127,21 +128,19 @@ impl MLFQ {
 
         let mut level = 0;
         let mut idx = queue_index;
-        let mut err = false;
+        let mut sum = 0;
 
+        // We loop through every level and add the length of the contents at that level to a sum
         for i in 0..self.num_levels {
-            let len = self.queues[i].len();
-            let c = idx % len;
-                if c == idx {
-                    idx = c;
-                    err = true;
-                    break;
-                }
-                idx -= len;
-                level += 1;
+            sum += self.queues[i].len();
+            if sum >= queue_index { // We use this to recalculate the coordinates in terms of 2 dimensions
+                return (level, idx, false)
+            }
+            idx -= sum;
+            level += 1;
         }
-
-        (level, idx, err)
+        // If we were not able to locate anything, than queue_index is outside the bounds, so we need to signify as a seperate error variable since level / idx are usize, so they cannot hold negative values for negative flags
+        (level, idx, true)
     }
 }
 

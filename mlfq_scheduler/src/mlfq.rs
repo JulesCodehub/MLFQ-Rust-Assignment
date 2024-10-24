@@ -34,11 +34,13 @@ impl MLFQ {
         }
 
         // 1. given the process, read its priority so we can see what queue it belongs in.
-        let prio = process.priority; //make sure this value is immutable
+        let prio = process.priority;
+        let n = self.num_levels;
 
-        match prio {
-            1..self.num_levels => queues[prio-1].add(process),
-            _ => self.queues[0].add(process), // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
+        if prio > 0 && prio <= n {
+            self.queues[prio-1].push(process);
+        } else {
+            self.queues[0].push(process); // 2. Edge case: if bounds is outside of range 1...num_levels, we need to put it in the 0th queue
         }
     }
 
@@ -49,17 +51,15 @@ impl MLFQ {
         let (level, idx, err) = self.find_index(queue_index);
 
         // 2. Edge case: if this index does not exist, we need to return as there is nothing to process
-        if err {
-            return
-        }
+        if err { return }
 
         // 3. using this proper index lets copy the information to preform some math on it locally
         let proc_time = self.queues[level][idx].remaining_time;
         let t_q = self.time_quanta[level];
 
         // 4. determine how long the process runs for
-        let mut time_ran: u32;
-        let mut job_left: u32;
+        let time_ran: u32;
+        let job_left: u32;
 
         if proc_time == 0 {
             time_ran = 0;
@@ -80,7 +80,7 @@ impl MLFQ {
 
         // 6. if the process does not have anything left to run, eject it
         if job_left == 0 {
-            self.queues[level][idx].remove();
+            self.queues[level].remove(idx);
         }
 
         // 7. if instead the process ran all of its time quanta, we need to move it to the next lower queue
@@ -88,7 +88,8 @@ impl MLFQ {
         // We will use this as a condition to ignore execution for this whole block
         if time_ran >= t_q && level < self.num_levels {
             self.queues[level][idx].priority += 1;
-            self.queues[self.num_levels].add(self.queues[level][idx].remove());
+            let tmp = self.queues[level].remove(idx);
+            self.queues[self.num_levels].push(tmp);
         }
 
         // 9. update the global time
@@ -101,13 +102,14 @@ impl MLFQ {
         // 1. Move any processes not in the 0th level to the 0th level in the most elegant way possible
         for i in 1..self.num_levels {
             while !self.queues[i].is_empty() {
-                self.queues[0].add(self.queues[i][0].remove());
+                let tmp = self.queues[i].remove(0);
+                self.queues[0].push(tmp);
             }
         }
 
         // 2. Assign every process to have 0 priority
-        for p in self.queues[0] {
-            p.priority = 0;
+        for i in 0..self.queues[0].len() {
+            self.queues[0][i].priority = 0;
         }
     }
 

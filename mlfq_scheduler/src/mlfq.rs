@@ -119,6 +119,27 @@ impl MLFQ {
             self.priority_boost();
         }
     }
+
+    // Helper function to convert queue_index to real index
+    pub fn find_index(&mut self, queue_index: usize) -> (usize, usize) {
+
+        let mut level = 0;
+        let mut idx = queue_index;
+
+        for i in 0...num_levels {
+            let len = nums[i].len();
+            let c = idx % len;
+                if c == idx {
+                    idx = c;
+                    break;
+                }
+                idx -= len;
+                level += 1;
+            }
+        }
+
+        (level, idx)
+    }
 }
 
 // Automated Test Cases
